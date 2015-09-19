@@ -385,6 +385,10 @@ public class BluetoothLeService extends Service {
         }
     }
 
+    public boolean isScanning(){
+        return mScanning;
+    }
+
     public boolean isConnected(){
         if(mConnectionState == STATE_CONNECTED)
             return true;

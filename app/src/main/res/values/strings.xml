@@ -1,4 +1,9 @@
 <resources>
-    <string name="app_name">EyewearDemo</string>
+    <string name="app_name">Eyewear Demo</string>
     <string name="title_activity_main">MainActivity</string>
+
+    <string name="menu_scan">Scan</string>
+    <string name="menu_stop">Stop</string>
+    <string name="menu_connect">Connect</string>
+    <string name="menu_disconnect">Disconnect</string>
 </resources>
