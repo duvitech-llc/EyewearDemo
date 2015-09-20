@@ -436,4 +436,10 @@ public class BluetoothLeService extends Service {
 
         return mBluetoothGatt.getServices();
     }
+
+    public boolean sendCommandString(){
+        boolean bReturn = false;
+
+        return bReturn;
+    }
 }
