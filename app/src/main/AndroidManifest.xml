@@ -25,12 +25,15 @@
         <activity
             android:name=".SplashActivity"
             android:screenOrientation="portrait"
-            android:theme="@style/AppTheme.NoActionBar" >
+            android:theme="@style/AppTheme.NoActionBar"
+            android:noHistory="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity android:name=".DeviceScanActivity" >
         </activity>
         <activity
             android:name=".MainActivity"
@@ -43,9 +46,6 @@
             android:enabled="true"
             android:exported="true" >
         </service>
-
-        <activity android:name=".DeviceScanActivity" >
-        </activity>
     </application>
 
 </manifest>

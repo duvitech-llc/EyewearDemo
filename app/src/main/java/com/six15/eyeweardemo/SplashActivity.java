@@ -1,5 +1,6 @@
 package com.six15.eyeweardemo;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -21,6 +22,8 @@ public class SplashActivity extends AppCompatActivity {
     private static boolean bSplash = false;
     SharedPreferences prefs;
     static final int SEND_TRACE_REQUEST = 1;
+    private ApplicationPreferences sharedPreference;
+    Activity context = this;
 
     private void displayVersionName() {
         String verName = "v";
@@ -50,7 +53,7 @@ public class SplashActivity extends AppCompatActivity {
         String trace = "";
         boolean bErrorlog = false;
 
-        prefs = this.getSharedPreferences("com.six15.ardrawing", Context.MODE_PRIVATE);
+        sharedPreference = new ApplicationPreferences();
         displayVersionName();
 
 
@@ -73,13 +76,13 @@ public class SplashActivity extends AppCompatActivity {
             Intent sendIntent = new Intent(Intent.ACTION_SEND);
             String subject = "Error report";
             String body =
-                    "Mail this to gvigelette@vanteon.com: " +
+                    "Mail this to gvigelet@duvitech.com: " +
                             "\n" +
                             trace +
                             "\n";
 
             sendIntent.putExtra(Intent.EXTRA_EMAIL,
-                    new String[]{"gvigelette@vanteon.com"});
+                    new String[]{"gvigelet@duvitech.com"});
             sendIntent.putExtra(Intent.EXTRA_TEXT, body);
             sendIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
             sendIntent.setType("message/rfc822");
@@ -96,8 +99,8 @@ public class SplashActivity extends AppCompatActivity {
                 Thread background = new Thread() {
                     public void run() {
 
-                        // After 5 seconds redirect to another intent
-                        Intent i = new Intent(getBaseContext(), MainActivity.class);
+                        Intent i = null;
+                        i = new Intent(getBaseContext(), DeviceScanActivity.class);
 
                         try {
                             // Thread will sleep for 5 seconds
@@ -141,9 +144,8 @@ public class SplashActivity extends AppCompatActivity {
             bSplash = true;
             Thread background = new Thread() {
                 public void run() {
-
-                    // After 5 seconds redirect to another intent
-                    Intent i = new Intent(getBaseContext(), MainActivity.class);
+                    Intent i = null;
+                    i = new Intent(getBaseContext(), DeviceScanActivity.class);
 
                     try {
                         // Thread will sleep for 5 seconds

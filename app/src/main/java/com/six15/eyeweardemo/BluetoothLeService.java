@@ -45,6 +45,8 @@ public class BluetoothLeService extends Service {
             "com.example.bluetooth.le.ACTION_DATA_AVAILABLE";
     public final static String ACTION_DATA_WRITE_COMPLETED =
             "com.example.bluetooth.le.ACTION_WRITE_COMPLETED";
+    public final static String ACTION_DEVICE_FOUND =
+            "com.example.bluetooth.le.ACTION_DEVICE_FOUND";
     public final static String EXTRA_DATA =
             "com.example.bluetooth.le.EXTRA_DATA";
 
@@ -114,24 +116,7 @@ public class BluetoothLeService extends Service {
     private boolean mScanning = false;
     private long SCAN_PERIOD = 10000;
 
-    private String mDeviceName  = "SIX15.EYE";
-
-    private BluetoothAdapter.LeScanCallback mLeScanCallback =
-            new BluetoothAdapter.LeScanCallback() {
-
-                @Override
-                public void onLeScan(final BluetoothDevice device, final int rssi, byte[] scanRecord) {
-
-                    if(device != null && device.getName() != null) {
-                        if (device.getName().compareTo(mDeviceName) == 0) {
-                            Log.i(TAG,"Found Six-15 Eyewear");
-                        }
-                    }else
-                    {
-                        Log.i(TAG,"Scanned device is null or has a null name");
-                    }
-                }
-            };
+    private static final String mDeviceName  = "SIX15.EYE";
 
     private void broadcastUpdate(final String action) {
         final Intent intent = new Intent(action);
@@ -220,6 +205,9 @@ public class BluetoothLeService extends Service {
      * @return Return true if the initialization is successful.
      */
     public boolean initialize() {
+
+        mHandler = new Handler();
+
         // For API level 18 and above, get a reference to BluetoothAdapter through
         // BluetoothManager.
         if (mBluetoothManager == null) {
@@ -366,7 +354,29 @@ public class BluetoothLeService extends Service {
         return temp;
     }
 
-    private void scanLeDevice(final boolean enable) {
+    public void scanLeDevice(final boolean enable) {
+
+        final BluetoothAdapter.LeScanCallback mLeScanCallback =
+                new BluetoothAdapter.LeScanCallback() {
+
+                    @Override
+                    public void onLeScan(final BluetoothDevice device, final int rssi, byte[] scanRecord) {
+
+                        if(device != null && device.getName() != null) {
+                            if (device.getName().compareTo(mDeviceName) == 0) {
+                                Log.i(TAG, "Found Six-15 Eyewear");
+                                final Intent intent = new Intent(ACTION_DEVICE_FOUND);
+                                intent.putExtra("BLE_DEVICE", device);
+                                sendBroadcast(intent);
+                            }
+                        }else
+                        {
+                            Log.i(TAG,"Scanned device is null or has a null name");
+                        }
+                    }
+                };
+
+
         if (enable) {
             // Stops scanning after a pre-defined scan period.
             mHandler.postDelayed(new Runnable() {
