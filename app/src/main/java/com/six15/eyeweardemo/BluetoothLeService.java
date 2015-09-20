@@ -21,10 +21,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class BluetoothLeService extends Service {
     private final static String TAG = "BluetoothLeService";
-
+    private static final BlockingQueue<byte[]> packetQueue = new LinkedBlockingQueue<>();
+    private static final Lock lock = new ReentrantLock();
     private BluetoothManager mBluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
     private String mBluetoothDeviceAddress;
