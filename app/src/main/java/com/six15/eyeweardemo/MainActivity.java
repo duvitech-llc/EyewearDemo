@@ -20,6 +20,7 @@ import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
+    private BluetoothLeService mBluetoothLeService;
 
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -27,11 +28,18 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder service) {
             Log.d(TAG, "BLEService Connected");
+            mBluetoothLeService = ((BluetoothLeService.LocalBinder) service).getService();
+
+            if (!mBluetoothLeService.isInitialized() && !mBluetoothLeService.initialize()) {
+                Log.e(TAG, "Unable to initialize Bluetooth");
+            }
+
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
             Log.d(TAG, "BLEService Disconnected");
+            mBluetoothLeService = null;
         }
     };
 
@@ -70,6 +78,17 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private void sendCommand(String commandString){
+        Log.d(TAG, "Sending Command: " + commandString);
+        if(mBluetoothLeService != null){
+            mBluetoothLeService.sendCommandString(commandString);
+        }
+        else{
+            Log.d(TAG, "BluetoothSevice is NULL");
+            Toast.makeText(getBaseContext(), "Failed to connect to BLE Service", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -91,7 +110,8 @@ public class MainActivity extends AppCompatActivity {
         btnEmail.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                final String theCommand  = String.format("%s","bem");
+                sendCommand(theCommand);
             }
         });
 
@@ -99,7 +119,8 @@ public class MainActivity extends AppCompatActivity {
         btnLeftBlinker.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                final String theCommand  = String.format("%s %d,%d,%d,","blt", 35,45,0);
+                sendCommand(theCommand);
             }
         });
 
@@ -107,7 +128,8 @@ public class MainActivity extends AppCompatActivity {
         btnRightBlinker.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                final String theCommand  = String.format("%s %d,%d,%d,","brt", 318,45,0);
+                sendCommand(theCommand);
             }
         });
 

@@ -121,6 +121,7 @@ public class BluetoothLeService extends Service {
     private long SCAN_PERIOD = 5000;
 
     private static final String mDeviceName  = "SIX15.EYE";
+    private boolean bInitialized = false;
 
     private void broadcastUpdate(final String action) {
         final Intent intent = new Intent(action);
@@ -209,7 +210,7 @@ public class BluetoothLeService extends Service {
      * @return Return true if the initialization is successful.
      */
     public boolean initialize() {
-
+        bInitialized = false;
         mHandler = new Handler();
 
         // For API level 18 and above, get a reference to BluetoothAdapter through
@@ -218,17 +219,21 @@ public class BluetoothLeService extends Service {
             mBluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
             if (mBluetoothManager == null) {
                 Log.e(TAG, "Unable to initialize BluetoothManager.");
-                return false;
+                return bInitialized;
             }
         }
 
         mBluetoothAdapter = mBluetoothManager.getAdapter();
         if (mBluetoothAdapter == null) {
             Log.e(TAG, "Unable to obtain a BluetoothAdapter.");
-            return false;
+            return bInitialized;
         }
+        bInitialized = true;
+        return bInitialized;
+    }
 
-        return true;
+    public boolean isInitialized(){
+        return bInitialized;
     }
 
     public BluetoothDevice getConnectedDevice(){
@@ -437,7 +442,7 @@ public class BluetoothLeService extends Service {
         return mBluetoothGatt.getServices();
     }
 
-    public boolean sendCommandString(){
+    public boolean sendCommandString(String command){
         boolean bReturn = false;
 
         return bReturn;
