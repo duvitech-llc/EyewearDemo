@@ -30,7 +30,6 @@ public class BluetoothLeService extends Service {
     private String mBluetoothDeviceAddress;
     private BluetoothGatt mBluetoothGatt;
     private int mConnectionState = STATE_DISCONNECTED;
-
     private static final int STATE_DISCONNECTED = 0;
     private static final int STATE_CONNECTING = 1;
     private static final int STATE_CONNECTED = 2;
@@ -47,6 +46,10 @@ public class BluetoothLeService extends Service {
             "com.example.bluetooth.le.ACTION_WRITE_COMPLETED";
     public final static String ACTION_DEVICE_FOUND =
             "com.example.bluetooth.le.ACTION_DEVICE_FOUND";
+    public final static String ACTION_BLE_SCAN_START =
+            "com.example.bluetooth.le.ACTION_BLE_SCAN_START";
+    public final static String ACTION_BLE_SCAN_STOP =
+            "com.example.bluetooth.le.ACTION_BLE_SCAN_STOP";
     public final static String EXTRA_DATA =
             "com.example.bluetooth.le.EXTRA_DATA";
 
@@ -65,6 +68,7 @@ public class BluetoothLeService extends Service {
                 intentAction = ACTION_GATT_CONNECTED;
                 mConnectionState = STATE_CONNECTED;
                 broadcastUpdate(intentAction);
+
                 Log.i(TAG, "Connected to GATT server.");
                 // Attempts to discover services after successful connection.
                 Log.i(TAG, "Attempting to start service discovery:" +
@@ -114,7 +118,7 @@ public class BluetoothLeService extends Service {
 
     private Handler mHandler;
     private boolean mScanning = false;
-    private long SCAN_PERIOD = 10000;
+    private long SCAN_PERIOD = 5000;
 
     private static final String mDeviceName  = "SIX15.EYE";
 
@@ -227,6 +231,13 @@ public class BluetoothLeService extends Service {
         return true;
     }
 
+    public BluetoothDevice getConnectedDevice(){
+        if(mBluetoothGatt != null && mConnectionState == STATE_CONNECTED){
+            return mBluetoothGatt.getDevice();
+        }
+
+        return null;
+    }
     /**
      * Connects to the GATT server hosted on the Bluetooth LE device.
      *
@@ -382,16 +393,24 @@ public class BluetoothLeService extends Service {
             mHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
+                    Log.d(TAG, "Timout Stop Scan");
                     mScanning = false;
                     mBluetoothAdapter.stopLeScan(mLeScanCallback);
+
+                    broadcastUpdate(ACTION_BLE_SCAN_STOP);
                 }
             }, SCAN_PERIOD);
 
             mScanning = true;
             mBluetoothAdapter.startLeScan(mLeScanCallback);
+            broadcastUpdate(ACTION_BLE_SCAN_START);
         } else {
+
+            Log.d(TAG, "Stopping Scan");
             mScanning = false;
             mBluetoothAdapter.stopLeScan(mLeScanCallback);
+            broadcastUpdate(ACTION_BLE_SCAN_STOP);
+
         }
     }
 
