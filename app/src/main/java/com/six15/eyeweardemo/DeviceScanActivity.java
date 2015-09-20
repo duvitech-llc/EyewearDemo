@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.os.Handler;
 import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -22,6 +23,7 @@ import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -36,6 +38,7 @@ public class DeviceScanActivity extends AppCompatActivity {
     private boolean mConnected = false;
     private boolean mConnecting = false;
     private ListView mListView = null;
+    private Handler mHandler;
 
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -115,6 +118,11 @@ public class DeviceScanActivity extends AppCompatActivity {
     // ACTION_GATT_SERVICES_DISCOVERED: discovered GATT services.
     // ACTION_DATA_AVAILABLE: received data from the device.  This can be a result of read
     //                        or notification operations.
+    // ACTION_BLE_SCAN_START: BLE Device scan started.
+    // ACTION_BLE_SCAN_STOP: BLE Device scan stopped.
+    // ACTION_DEVICE_FOUND: BLE Device found in scan.
+    // ACTION_DATA_WRITE_COMPLETED: Write to characteristic completed.
+
     private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -127,10 +135,26 @@ public class DeviceScanActivity extends AppCompatActivity {
                 mConnected = true;
                 mConnecting = false;
                 Log.d(TAG, "Device Connected");
+                // send to main screen
+                Toast.makeText(getBaseContext(), "Connected", Toast.LENGTH_SHORT).show();
+                mHandler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        Log.d(TAG, "Calling MainActivity");
+
+                        final Intent i = new Intent(getApplicationContext(), MainActivity.class);
+                        // pass data here if needed
+                        if (mBluetoothLeService.isScanning()) {
+                            mBluetoothLeService.scanLeDevice(false);
+                        }
+                        startActivity(i);
+                    }
+                }, 500);
 
             } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
                 mConnected = false;
                 Log.d(TAG, "Device Disconnected");
+                Toast.makeText(getBaseContext(), "Disconnected", Toast.LENGTH_SHORT).show();
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
             } else if (BluetoothLeService.ACTION_DEVICE_FOUND.equals(action)) {
@@ -143,6 +167,8 @@ public class DeviceScanActivity extends AppCompatActivity {
                         mLeDeviceListAdapter.notifyDataSetChanged();
                     }
                 });
+            } else if (BluetoothLeService.ACTION_DATA_WRITE_COMPLETED.equals(action)) {
+
             }
         }
     };
@@ -181,6 +207,8 @@ public class DeviceScanActivity extends AppCompatActivity {
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
         bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
 
+        // create handler object
+        mHandler = new Handler();
     }
 
     @Override
