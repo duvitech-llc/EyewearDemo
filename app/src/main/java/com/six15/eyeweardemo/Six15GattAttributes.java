@@ -10,6 +10,7 @@ public class Six15GattAttributes {
     public static String HEART_RATE_MEASUREMENT = "00002a37-0000-1000-8000-00805f9b34fb";
     public static String CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb";
     public static String SIX15_DATA_RX = "0000fff4-0000-1000-8000-00805f9b34fb";
+    public static String SIX15_DATA_TX = "0000fff3-0000-1000-8000-00805f9b34fb";
     public static String SIX15_BLE_SERVICE = "0000fff0-0000-1000-8000-00805f9b34fb";
 
     static {

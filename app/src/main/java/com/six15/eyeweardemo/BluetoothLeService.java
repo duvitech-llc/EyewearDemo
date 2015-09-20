@@ -28,8 +28,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class BluetoothLeService extends Service {
     private final static String TAG = "BluetoothLeService";
-    private static final BlockingQueue<byte[]> packetQueue = new LinkedBlockingQueue<>();
-    private static final Lock lock = new ReentrantLock();
+    private final static BlockingQueue<byte[]> packetQueue = new LinkedBlockingQueue<>();
+    private final static Lock qLock = new ReentrantLock();
     private BluetoothManager mBluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
     private String mBluetoothDeviceAddress;
@@ -38,6 +38,15 @@ public class BluetoothLeService extends Service {
     private static final int STATE_DISCONNECTED = 0;
     private static final int STATE_CONNECTING = 1;
     private static final int STATE_CONNECTED = 2;
+
+    private Handler mHandler;
+    private Handler mQueueHandler;
+    private Thread mQueueProcessorThread = null;
+    private boolean mScanning = false;
+    private long SCAN_PERIOD = 5000;
+
+    private static final String mDeviceName  = "SIX15.EYE";
+    private boolean bInitialized = false;
 
     public final static String ACTION_GATT_CONNECTED =
             "com.example.bluetooth.le.ACTION_GATT_CONNECTED";
@@ -63,6 +72,10 @@ public class BluetoothLeService extends Service {
 
     public final static UUID UUID_SIX15_RECEIVE_DATA =
             UUID.fromString(Six15GattAttributes.SIX15_DATA_RX);
+
+    public final static UUID UUID_SIX15_TRANSMIT_DATA =
+            UUID.fromString(Six15GattAttributes.SIX15_DATA_TX);
+
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
     private final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
@@ -89,8 +102,11 @@ public class BluetoothLeService extends Service {
 
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 broadcastUpdate(ACTION_GATT_SERVICES_DISCOVERED);
+                // start processing queue
+                processQueue();
             } else {
                 Log.w(TAG, "onServicesDiscovered received: " + status);
             }
@@ -106,12 +122,30 @@ public class BluetoothLeService extends Service {
         }
 
         @Override
+        public void onReliableWriteCompleted (BluetoothGatt gatt, int status){
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+
+            }
+            else
+            {
+
+            }
+
+            // process next item in queue (queue blocks if empty)
+            processQueue();
+        }
+
+        @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status){
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 broadcastUpdate(ACTION_DATA_WRITE_COMPLETED, characteristic);
+
             } else {
                 Log.w(TAG, "onCharacteristicWrite received: " + status);
             }
+
+            // process next item in queue (queue blocks if empty)
+            processQueue();
         }
 
         @Override
@@ -120,13 +154,6 @@ public class BluetoothLeService extends Service {
             broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
         }
     };
-
-    private Handler mHandler;
-    private boolean mScanning = false;
-    private long SCAN_PERIOD = 5000;
-
-    private static final String mDeviceName  = "SIX15.EYE";
-    private boolean bInitialized = false;
 
     private void broadcastUpdate(final String action) {
         final Intent intent = new Intent(action);
@@ -160,7 +187,19 @@ public class BluetoothLeService extends Service {
             Log.i(TAG, "DATA: " + bytesToHex(data));
             intent.putExtra("BLE_DATA", data);
 
-        } else {
+        } else if(UUID_SIX15_TRANSMIT_DATA.equals(characteristic.getUuid())) {
+
+            final byte[] data = characteristic.getValue();
+            Log.d(TAG, "TX: " + characteristic.getUuid() + " Data: " + bytesToHex(data));
+
+            if (data != null && data.length > 0) {
+                final StringBuilder stringBuilder = new StringBuilder(data.length);
+                for(byte byteChar : data)
+                    stringBuilder.append(String.format("%02X ", byteChar));
+                intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
+            }
+        } else
+        {
             // For all other profiles, writes the data formatted in HEX.
 
             Log.w(TAG, "Unknown service characteristic " + characteristic.getUuid());
@@ -209,15 +248,63 @@ public class BluetoothLeService extends Service {
         }
         return new String(hexChars);
     }
+
+    class Consumer implements Runnable {
+        private final BlockingQueue<byte[]> queue;
+        private final BluetoothGattCharacteristic sendDataChar;
+
+        Consumer(BlockingQueue q, BluetoothGattCharacteristic writeChar) {
+            queue = q;
+            sendDataChar = writeChar;
+        }
+
+        public void run() {
+            try {
+                consume(queue.take());
+            } catch (InterruptedException ex) {
+                Log.e(TAG, "Packet Queue Interrupted: " + ex.getMessage());
+            }
+        }
+        void consume(byte[] x) {
+            sendDataChar.setValue(x);
+            boolean status = writeCharacteristic(sendDataChar);
+            if (!status)
+                Log.e(TAG, "Failed to send BLE Packet");
+        }
+    }
+
+    private void processQueue(){
+        final BluetoothGattCharacteristic sendDataChar = mBluetoothGatt.getService(UUID.fromString(Six15GattAttributes.SIX15_BLE_SERVICE))
+                .getCharacteristic(UUID.fromString(Six15GattAttributes.SIX15_DATA_TX));
+        if(sendDataChar == null)
+        {
+            Log.e(TAG, "Fatal Error cannot retrieve characteristic from service");
+            return;
+        }
+        Consumer c1 = new Consumer(packetQueue, sendDataChar);
+        mQueueProcessorThread = new Thread(c1);
+        mQueueProcessorThread.start();
+    }
+
+    @Override
+    public void onCreate() {
+        Log.d(TAG,"Create");
+        mHandler = new Handler();
+        mQueueHandler = new Handler();
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.d(TAG, "Destroy");
+    }
     /**
      * Initializes a reference to the local Bluetooth adapter.
      *
      * @return Return true if the initialization is successful.
      */
     public boolean initialize() {
+        Log.d(TAG,"Initialize");
         bInitialized = false;
-        mHandler = new Handler();
-
         // For API level 18 and above, get a reference to BluetoothAdapter through
         // BluetoothManager.
         if (mBluetoothManager == null) {
@@ -448,8 +535,17 @@ public class BluetoothLeService extends Service {
     }
 
     public boolean sendCommandString(String command){
-        boolean bReturn = false;
-
+        boolean bReturn = true;
+        SerialProtocol protoHelper = new SerialProtocol(SerialProtocol.FrameTypes.STRING, command.length());
+        byte[] byteArr = command.getBytes();
+        qLock.lock();
+        Log.d(TAG, "Add " + command + " to BLE queue");
+        Log.d(TAG, "Queue Size: " + packetQueue.size());
+        while (protoHelper.hasNextPacket()) {
+            byte[] temp = protoHelper.getNextPacket(byteArr);
+            packetQueue.add(temp);
+        }
+        qLock.unlock();
         return bReturn;
     }
 }
