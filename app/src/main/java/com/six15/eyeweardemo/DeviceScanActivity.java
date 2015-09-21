@@ -196,6 +196,7 @@ public class DeviceScanActivity extends AppCompatActivity {
                 }
             }
         });
+
         // set up shared preferences
         sharedPreference = new ApplicationPreferences();
 
