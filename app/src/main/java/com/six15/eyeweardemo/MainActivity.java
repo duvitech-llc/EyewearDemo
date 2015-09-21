@@ -14,6 +14,8 @@ import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
@@ -21,6 +23,7 @@ import android.widget.Toast;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private BluetoothLeService mBluetoothLeService;
+    private String mDeviceName;
 
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -90,6 +93,42 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.gatt_services, menu);
+        boolean bConnected = false;
+        if(mBluetoothLeService != null && mBluetoothLeService.isConnected())
+        {
+            bConnected = true;
+        }
+
+        if (bConnected) {
+            menu.findItem(R.id.menu_connect).setVisible(false);
+            menu.findItem(R.id.menu_disconnect).setVisible(true);
+        } else {
+            menu.findItem(R.id.menu_connect).setVisible(true);
+            menu.findItem(R.id.menu_disconnect).setVisible(false);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch(item.getItemId()) {
+            case R.id.menu_connect:
+               // mBluetoothLeService.connect(mDeviceAddress);
+                return true;
+            case R.id.menu_disconnect:
+                if(mBluetoothLeService != null && mBluetoothLeService.isConnected())
+                    mBluetoothLeService.disconnect();
+                return true;
+            case android.R.id.home:
+                onBackPressed();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -119,7 +158,7 @@ public class MainActivity extends AppCompatActivity {
         btnLeftBlinker.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                final String theCommand  = String.format("%s %d,%d,%d,","blt", 35,45,0);
+                final String theCommand = String.format("%s %d,%d,%d,", "blt", 35, 45, 0);
                 sendCommand(theCommand);
             }
         });
@@ -128,10 +167,11 @@ public class MainActivity extends AppCompatActivity {
         btnRightBlinker.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                final String theCommand  = String.format("%s %d,%d,%d,","brt", 318,45,0);
+                final String theCommand = String.format("%s %d,%d,%d,", "brt", 318, 45, 0);
                 sendCommand(theCommand);
             }
         });
+
 
         // bind to BLE Service
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
